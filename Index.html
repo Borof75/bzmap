@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Battle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+            image-rendering: pixelated;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        header {
+            padding: 20px;
+            background: white;
+            border-bottom: 3px solid #333;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #333;
+            text-shadow: 2px 2px 0 #ddd;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .controls {
+            width: 250px;
+            padding: 20px;
+            background: white;
+            border-right: 3px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .section {
+            background: #f9f9f9;
+            border: 2px solid #333;
+            padding: 15px;
+            border-radius: 0;
+        }
+        
+        .section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            color: #333;
+            border-bottom: 2px solid #333;
+            padding-bottom: 5px;
+        }
+        
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #333;
+            background: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.1s;
+            text-align: center;
+        }
+        
+        .mode-btn.active {
+            background: #333;
+            color: white;
+        }
+        
+        .mode-btn:hover {
+            background: #555;
+            color: white;
+        }
+        
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #333;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .color-option.active {
+            border: 2px solid #333;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
+        }
+        
+        .custom-color {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #customColor {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #333;
+            cursor: pointer;
+            background: white;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .stat-value {
+            color: #e74c3c;
+        }
+        
+        .cooldown-container {
+            margin-top: 10px;
+        }
+        
+        .cooldown-bar {
+            height: 20px;
+            background-color: #ddd;
+            border: 2px solid #333;
+            border-radius: 0;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .cooldown-progress {
+            height: 100%;
+            background-color: #e74c3c;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        
+        .instructions {
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            position: relative;
+        }
+        
+        .instructions li:before {
+            content: "■";
+            position: absolute;
+            left: -15px;
+            color: #e74c3c;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background-color: #e0e0e0;
+        }
+        
+        #pixelCanvas {
+            position: absolute;
+            background-color: white;
+            cursor: crosshair;
+        }
+        
+        .canvas-container.pan-mode {
+            cursor: grab;
+        }
+        
+        .canvas-container.pan-mode.dragging {
+            cursor: grabbing;
+        }
+        
+        .canvas-container.paint-mode {
+            cursor: crosshair;
+        }
+        
+        footer {
+            padding: 15px 20px;
+            background: white;
+            border-top: 3px solid #333;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Pixel Battle</h1>
+    </header>
+    
+    <div class="container">
+        <div class="controls">
+            <div class="section">
+                <h3>Режим</h3>
+                <div class="mode-selector">
+                    <button class="mode-btn active" id="paintModeBtn">Рисование</button>
+                    <button class="mode-btn" id="panModeBtn">Перемещение</button>
+                </div>
+                
+                <h3>Выберите цвет</h3>
+                <div class="color-grid">
+                    <div class="color-option active" style="background-color: #ff0000;" data-color="#ff0000"></div>
+                    <div class="color-option" style="background-color: #00ff00;" data-color="#00ff00"></div>
+                    <div class="color-option" style="background-color: #0000ff;" data-color="#0000ff"></div>
+                    <div class="color-option" style="background-color: #ffff00;" data-color="#ffff00"></div>
+                    <div class="color-option" style="background-color: #ff00ff;" data-color="#ff00ff"></div>
+                    <div class="color-option" style="background-color: #00ffff;" data-color="#00ffff"></div>
+                    <div class="color-option" style="background-color: #ffffff;" data-color="#ffffff"></div>
+                    <div class="color-option" style="background-color: #000000;" data-color="#000000"></div>
+                    <div class="color-option" style="background-color: #ff8a00;" data-color="#ff8a00"></div>
+                    <div class="color-option" style="background-color: #e52e71;" data-color="#e52e71"></div>
+                    <div class="color-option" style="background-color: #4c00ff;" data-color="#4c00ff"></div>
+                    <div class="color-option" style="background-color: #00ff88;" data-color="#00ff88"></div>
+                </div>
+                
+                <div class="custom-color">
+                    <input type="color" id="customColor" value="#ff0000">
+                    <span>Свой цвет</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Статистика</h3>
+                <div class="stat-item">
+                    <span>Пикселей:</span>
+                    <span class="stat-value" id="pixelCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Текущий цвет:</span>
+                    <span class="stat-value" id="currentColor">#ff0000</span>
+                </div>
+                <div class="stat-item">
+                    <span>Кулдаун:</span>
+                    <span class="stat-value" id="cooldownText">Готов</span>
+                </div>
+                <div class="cooldown-container">
+                    <div class="cooldown-bar">
+                        <div class="cooldown-progress" id="cooldownProgress"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section instructions">
+                <h3>Управление</h3>
+                <ul>
+                    <li>Режим рисования - ставить пиксели</li>
+                    <li>Режим перемещения - двигать холст</li>
+                    <li>Колесико мыши - масштабирование</li>
+                    <li>Кулдаун: 1 секунда</li>
+                    <li>Поле: 2000x1500 пикселей</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="canvas-container paint-mode" id="canvasContainer">
+            <canvas id="pixelCanvas" width="2000" height="1500"></canvas>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Pixel Battle &copy; 2023 | Пиксельное искусство</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('pixelCanvas');
+            const ctx = canvas.getContext('2d');
+            const canvasContainer = document.getElementById('canvasContainer');
+            
+            // Переменные состояния
+            let currentColor = '#ff0000';
+            let pixelCount = 0;
+            let isOnCooldown = false;
+            let cooldownTime = 1000;
+            let lastPixelTime = 0;
+            let currentMode = 'paint';
+            
+            // Переменные для камеры
+            let viewport = {
+                x: 0,
+                y: 0,
+                scale: 1
+            };
+            
+            let isDragging = false;
+            let dragStart = { x: 0, y: 0 };
+            let viewportStart = { x: 0, y: 0 };
+            
+            const pixelSize = 10;
+            const canvasWidth = 2000;
+            const canvasHeight = 1500;
+
+            // Инициализация
+            function init() {
+                // Очищаем холст и рисуем сетку
+                drawGrid();
+                
+                // Центрируем
+                centerViewport();
+                setupEventListeners();
+                updateStats();
+                updateCanvasPosition();
+            }
+
+            function centerViewport() {
+                viewport.x = (canvasContainer.clientWidth - canvasWidth * viewport.scale) / 2;
+                viewport.y = (canvasContainer.clientHeight - canvasHeight * viewport.scale) / 2;
+            }
+
+            function updateCanvasPosition() {
+                canvas.style.left = viewport.x + 'px';
+                canvas.style.top = viewport.y + 'px';
+                canvas.style.width = (canvasWidth * viewport.scale) + 'px';
+                canvas.style.height = (canvasHeight * viewport.scale) + 'px';
+            }
+
+            function drawGrid() {
+                // Очищаем холст белым
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Рисуем тонкие черные линии сетки
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1;
+                
+                // Вертикальные линии
+                for (let x = 0; x <= canvas.width; x += pixelSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                
+                // Горизонтальные линии
+                for (let y = 0; y <= canvas.height; y += pixelSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            }
+
+            // Преобразование координат экрана в координаты холста
+            function screenToCanvas(screenX, screenY) {
+                const rect = canvasContainer.getBoundingClientRect();
+                const x = (screenX - rect.left - viewport.x) / viewport.scale;
+                const y = (screenY - rect.top - viewport.y) / viewport.scale;
+                return { x, y };
+            }
+
+            function getPixelCoordinates(canvasX, canvasY) {
+                return {
+                    x: Math.floor(canvasX / pixelSize) * pixelSize,
+                    y: Math.floor(canvasY / pixelSize) * pixelSize
+                };
+            }
+
+            function drawPixel(x, y) {
+                if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight) return false;
+                
+                const now = Date.now();
+                if (isOnCooldown) return false;
+                
+                isOnCooldown = true;
+                lastPixelTime = now;
+                updateCooldownDisplay();
+                
+                // Рисуем пиксель на оригинальном холсте
+                ctx.fillStyle = currentColor;
+                ctx.fillRect(x, y, pixelSize, pixelSize);
+                
+                // НЕ перерисовываем сетку поверх пикселя!
+                // Пиксель рисуется поверх сетки, сохраняя четкие контуры
+                
+                // Обновляем статистику
+                pixelCount++;
+                updateStats();
+                
+                return true;
+            }
+
+            function updateCooldownDisplay() {
+                if (!isOnCooldown) {
+                    document.getElementById('cooldownText').textContent = "Готов";
+                    document.getElementById('cooldownProgress').style.width = "0%";
+                    return;
+                }
+                
+                const now = Date.now();
+                const elapsed = now - lastPixelTime;
+                const progress = Math.min(elapsed / cooldownTime, 1);
+                
+                document.getElementById('cooldownProgress').style.width = `${progress * 100}%`;
+                
+                if (progress >= 1) {
+                    isOnCooldown = false;
+                    document.getElementById('cooldownText').textContent = "Готов";
+                } else {
+                    document.getElementById('cooldownText').textContent = `${((cooldownTime - elapsed) / 1000).toFixed(1)}s`;
+                    requestAnimationFrame(updateCooldownDisplay);
+                }
+            }
+
+            function updateStats() {
+                document.getElementById('pixelCount').textContent = pixelCount;
+                document.getElementById('currentColor').textContent = currentColor;
+            }
+
+            function setMode(mode) {
+                currentMode = mode;
+                document.getElementById('paintModeBtn').classList.toggle('active', mode === 'paint');
+                document.getElementById('panModeBtn').classList.toggle('active', mode === 'pan');
+                canvasContainer.className = `canvas-container ${mode}-mode`;
+                isDragging = false;
+            }
+
+            function setupEventListeners() {
+                // Выбор цвета
+                document.querySelectorAll('.color-option').forEach(option => {
+                    option.addEventListener('click', function() {
+                        document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+                        this.classList.add('active');
+                        currentColor = this.getAttribute('data-color');
+                        document.getElementById('customColor').value = currentColor;
+                        updateStats();
+                    });
+                });
+
+                document.getElementById('customColor').addEventListener('input', function() {
+                    currentColor = this.value;
+                    document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+                    updateStats();
+                });
+
+                // Режимы
+                document.getElementById('paintModeBtn').addEventListener('click', () => setMode('paint'));
+                document.getElementById('panModeBtn').addEventListener('click', () => setMode('pan'));
+
+                // События мыши
+                canvasContainer.addEventListener('mousedown', (e) => {
+                    if (e.button !== 0) return;
+                    
+                    if (currentMode === 'paint') {
+                        const canvasCoords = screenToCanvas(e.clientX, e.clientY);
+                        const pixelCoords = getPixelCoordinates(canvasCoords.x, canvasCoords.y);
+                        drawPixel(pixelCoords.x, pixelCoords.y);
+                    } else {
+                        isDragging = true;
+                        dragStart.x = e.clientX;
+                        dragStart.y = e.clientY;
+                        viewportStart.x = viewport.x;
+                        viewportStart.y = viewport.y;
+                        canvasContainer.classList.add('dragging');
+                    }
+                });
+
+                canvasContainer.addEventListener('mousemove', (e) => {
+                    if (currentMode === 'pan' && isDragging) {
+                        const dx = e.clientX - dragStart.x;
+                        const dy = e.clientY - dragStart.y;
+                        
+                        viewport.x = viewportStart.x + dx;
+                        viewport.y = viewportStart.y + dy;
+                        
+                        updateCanvasPosition();
+                    }
+                });
+
+                canvasContainer.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    canvasContainer.classList.remove('dragging');
+                });
+
+                canvasContainer.addEventListener('mouseleave', () => {
+                    isDragging = false;
+                    canvasContainer.classList.remove('dragging');
+                });
+
+                // Масштабирование
+                canvasContainer.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    
+                    const rect = canvasContainer.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+                    
+                    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                    const newScale = Math.min(Math.max(viewport.scale * zoomFactor, 0.1), 5);
+                    
+                    // Сохраняем позицию под курсором
+                    const worldX = (mouseX - viewport.x) / viewport.scale;
+                    const worldY = (mouseY - viewport.y) / viewport.scale;
+                    
+                    viewport.x = mouseX - worldX * newScale;
+                    viewport.y = mouseY - worldY * newScale;
+                    viewport.scale = newScale;
+                    
+                    updateCanvasPosition();
+                });
+
+                // Изменение размера окна
+                window.addEventListener('resize', () => {
+                    updateCanvasPosition();
+                });
+            }
+
+            // Запуск
+            init();
+        });
+    </script>
+</body>
+</html>
